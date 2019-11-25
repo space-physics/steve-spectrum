@@ -18,7 +18,7 @@ from datetime import datetime
 from matplotlib.pyplot import figure, show
 
 
-def load_spectrum(path: Path) -> np.ndarray:
+def load_spectrum(path: Path) -> xarray.DataArray:
     """ load TRex spectrum text file from
     https://doi.org/10.5281/zenodo.3552801
 
@@ -26,6 +26,13 @@ def load_spectrum(path: Path) -> np.ndarray:
     """
 
     path = Path(path).expanduser()
+    if path.is_file():
+        flist = [path]
+        path = path.parent
+        time: typing.List[typing.Union[str, datetime]] = ["unknown"]
+    else:
+        flist = [path / "TREx_spectrograph_20180410_063045.txt", path / "TREx_spectrograph_20180410_064015.txt"]
+        time = [datetime(2018, 4, 10, 6, 30, 45), datetime(2018, 4, 10, 6, 40, 15)]
     if not path.is_dir():
         raise NotADirectoryError(
             f"{path} not found; please download and extract the data from https://doi.org/10.5281/zenodo.3552801"
@@ -33,16 +40,20 @@ def load_spectrum(path: Path) -> np.ndarray:
 
     wavelengths = read_flattxt(path / "wavelength_per_bin.txt", 3)
 
-    dat_t0 = np.array(read_flattxt(path / "TREx_spectrograph_20180410_063045.txt", 4)).reshape((-1, len(wavelengths)))
+    arr = None
+    for file in flist:
+        if arr is None:
+            arr = np.array(read_flattxt(file, 4)).reshape((-1, len(wavelengths)))
+        else:
+            arr = np.stack((arr, np.array(read_flattxt(file, 4)).reshape((-1, len(wavelengths)))))
 
-    dat_t1 = np.array(read_flattxt(path / "TREx_spectrograph_20180410_064015.txt", 4)).reshape((-1, len(wavelengths)))
-
-    time = [datetime(2018, 4, 10, 6, 30, 45), datetime(2018, 4, 10, 6, 40, 15)]
+    if arr.ndim == 2:
+        arr = arr[None, :, :]
 
     dat = xarray.DataArray(
-        np.stack((dat_t0, dat_t1)),
+        data=arr,
         dims=("time", "elevation", "wavelength"),
-        coords={"time": time, "elevation": np.linspace(0, 180, 256), "wavelength": wavelengths},
+        coords={"time": time, "elevation": np.linspace(0, 180, arr.shape[1]), "wavelength": wavelengths},
     )
 
     return dat
