@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import xarray
 import typing
+import typing.io
 from datetime import datetime
 from matplotlib.pyplot import figure, show
 
@@ -57,8 +58,7 @@ def load_spectrum(path: Path) -> xarray.DataArray:
     igood = slice(27, 229)
 
     # can't have negative intensity, assuming detector bias
-    bias = arr.min()
-    arr -= bias
+    arr[arr < 0] = 0
 
     dat = xarray.DataArray(
         data=arr,
@@ -82,7 +82,7 @@ def read_flattxt(path: Path, skip_header: int) -> typing.List[float]:
     return dat
 
 
-def skip_rows(f, rows: int):
+def skip_rows(f: typing.io.TextIO, rows: int):
     """ skip rows of file f """
     for _ in range(rows):
         f.readline()
@@ -93,18 +93,24 @@ def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation):
     elevation angles chosen by inspection of keograms
     in Figures 1 and 2
     """
+    N = dat.shape[0]
+    fg = figure(1)
+    fg.clf()
+    axs = fg.subplots(N, 1, sharex=True)
 
     for i in range(dat.shape[0]):
-        ax = figure().gca()
+        ax = axs[i]
         for k, v in i_el[i].items():
             ax.plot(dat.wavelength, dat[i].loc[v, :].values, label=k, color=color[k])
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
-        ax.legend()
         ax.set_title(str(dat.time[i].values)[:-10])
         ax.set_ylabel("Luminosity (Rayleighs)")
-        ax.set_xlabel("wavelength (nm)")
         ax.grid(True)
+        ax.set_ylim(0, None)
+    ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
+    ax.legend()
+    ax.set_xlabel("wavelength (nm)")
 
 
 def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
@@ -120,8 +126,9 @@ def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
     """
 
     j_el = slice(90, 125)  # arbitrary
-
-    ax = figure().gca()
+    fg = figure(2)
+    fg.clf()
+    ax = fg.gca()
     keogram = dat.loc[:, j_el, :].sum("wavelength")
     keogram.name = "wavelength-summed luminosity"
     keogram.T.plot(ax=ax)
