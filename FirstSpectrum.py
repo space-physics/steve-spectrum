@@ -17,6 +17,9 @@ import typing
 from datetime import datetime
 from matplotlib.pyplot import figure, show
 
+IndexElevation = typing.Sequence[typing.Dict[str, int]]
+color = {"equatorward": "red", "steve": "blue", "poleward": "green"}
+
 
 def load_spectrum(path: Path) -> xarray.DataArray:
     """ load TRex spectrum text file from
@@ -50,11 +53,21 @@ def load_spectrum(path: Path) -> xarray.DataArray:
     if arr.ndim == 2:
         arr = arr[None, :, :]
 
+    # all zeros outside this elevation index range, by inspection
+    igood = slice(27, 229)
+
+    # can't have negative intensity, assuming detector bias
+    bias = arr.min()
+    arr -= bias
+
     dat = xarray.DataArray(
         data=arr,
+        name="spectrograh",
         dims=("time", "elevation", "wavelength"),
-        coords={"time": time, "elevation": np.linspace(0, 180, arr.shape[1]), "wavelength": wavelengths},
+        coords={"time": time, "elevation": range(arr.shape[1]), "wavelength": wavelengths},
     )
+
+    dat = dat[:, igood, :]
 
     return dat
 
@@ -75,19 +88,16 @@ def skip_rows(f, rows: int):
         f.readline()
 
 
-def plot_speclines(dat: xarray.DataArray):
-
-    # by inspection of paper
-    elevation_deg = [
-        {"poleward": 108.0, "equatorward": 100.0, "steve": 104.0},
-        {"poleward": 123.0, "equatorward": 117.0, "steve": 120.0},
-    ]
+def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation):
+    """
+    elevation angles chosen by inspection of keograms
+    in Figures 1 and 2
+    """
 
     for i in range(dat.shape[0]):
         ax = figure().gca()
-        for k, v in elevation_deg[i].items():
-            j = abs(dat.elevation - v).argmin().item()
-            ax.plot(dat.wavelength, dat[i, j, :].values, label=k)
+        for k, v in i_el[i].items():
+            ax.plot(dat.wavelength, dat[i].loc[v, :].values, label=k, color=color[k])
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
         ax.legend()
@@ -97,13 +107,45 @@ def plot_speclines(dat: xarray.DataArray):
         ax.grid(True)
 
 
+def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
+    """
+    the paper authors provide only two time steps of data.
+    We present them together to help show we have used the same elevation angles
+    as the paper Figures.
+
+    A keogram typically plots time on one axis and space on the other axis,
+    with intensity as the value plotted.
+    In this case, we sum the spectrum and are left with time and elevation angle
+    as free variables.
+    """
+
+    j_el = slice(90, 125)  # arbitrary
+
+    ax = figure().gca()
+    keogram = dat.loc[:, j_el, :].sum("wavelength")
+    keogram.name = "wavelength-summed luminosity"
+    keogram.T.plot(ax=ax)
+    for j, i in enumerate(i_el):
+        ax.scatter([dat.time[j].values] * 3, i.values(), s=100, c=color.values())
+
+    ax.set_title("keogram")
+    ax.set_xlabel("time (UTC)")
+    ax.set_ylabel("elevation bin (unitless)")
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("path", help="path to paper data directory")
     P = p.parse_args()
 
+    i_el = [
+        {"equatorward": 116, "steve": 119, "poleward": 122},
+        {"equatorward": 99, "steve": 103, "poleward": 107},
+    ]
+
     dat = load_spectrum(P.path)
 
-    plot_speclines(dat)
+    plot_speclines(dat, i_el)
+    plot_keogram(dat, i_el)
 
     show()
