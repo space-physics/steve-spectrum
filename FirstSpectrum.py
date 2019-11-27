@@ -9,12 +9,13 @@ Four main sources of discrepancy from paper figures:
 3. spectral smoothing
 4. bin width
 """
+import typing
+import typing.io
 import argparse
 from pathlib import Path
 import numpy as np
 import xarray
-import typing
-import typing.io
+import scipy.signal
 from datetime import datetime
 from matplotlib.pyplot import figure, show
 
@@ -56,6 +57,12 @@ def load_spectrum(path: Path) -> xarray.DataArray:
 
     # all zeros outside this elevation index range, by inspection
     igood = slice(27, 229)
+
+    # the paper did not specify the type or parameters of the spectrum smoothing used.
+    # here we use a typical Savitsky-Golay filter with arbitrary parameters
+    # observe with Figure 1 that  windows_length=5, polyorder=3 has a reasonably
+    # good match to the spectrum.
+    arr = scipy.signal.savgol_filter(arr, window_length=5, polyorder=3, axis=2)
 
     # can't have negative intensity, assuming detector bias
     arr[arr < 0] = 0
