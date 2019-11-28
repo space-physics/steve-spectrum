@@ -104,6 +104,7 @@ def plot_speclines(
     i_el: IndexElevation,
     wl_minmax: typing.Tuple[float, float] = None,
     axs=None,
+    j: int = 0,
 ):
     """
     elevation angles chosen by inspection of keograms
@@ -126,7 +127,8 @@ def plot_speclines(
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
         ax.set_title(f"{feature[i]}: " + str(dat.time[i].values)[:-10])
-        ax.set_ylabel("Luminosity (Rayleighs)")
+        if j == 0:
+            ax.set_ylabel("Luminosity (Rayleighs)")
         ax.grid(True)
         ax.set_ylim(0, None)
         if wl_minmax is None:
@@ -134,8 +136,8 @@ def plot_speclines(
         else:
             ax.set_xlim(wl_minmax)
     ax.legend()
-    ax.set_xlabel("wavelength (nm)")
     if fg is not None:
+        ax.set_xlabel("wavelength (nm)")
         fg.suptitle("Original paper Figures 1 and 2")
 
 
@@ -144,6 +146,7 @@ def plot_bgsubtracted_spectrum(
     i_el: IndexElevation,
     wl_minmax: typing.Tuple[float, float] = None,
     axs=None,
+    j: int = 0,
 ):
     """
     elevation angles chosen by inspection of keograms
@@ -182,7 +185,8 @@ def plot_bgsubtracted_spectrum(
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
         ax.set_title(f"{feature[i]}: " + str(dat.time[i].values)[:-10])
-        ax.set_ylabel("Luminosity (Rayleighs)")
+        if j == 0:
+            ax.set_ylabel("Luminosity (Rayleighs)")
         ax.grid(True)
         ax.set_ylim(0, None)
         if wl_minmax is None:
@@ -242,11 +246,12 @@ if __name__ == "__main__":
         plot_bgsubtracted_spectrum(dat, i_el)
 
     Nt = dat.shape[0]
-    fg = figure(10)
+    fg = figure(10, figsize=(18, 16))
     fg.clf()
     axs = fg.subplots(Nt * 2, 4)
-    for i, slim in enumerate([None, (425.0, 430.0), (555.0, 560.0), (625.0, 635.0)]):
-        plot_speclines(dat, i_el, slim, axs[:Nt, i])
-        plot_bgsubtracted_spectrum(dat, i_el, slim, axs[Nt:, i])
+    for j, slim in enumerate([None, (425.0, 430.0), (555.0, 560.0), (625.0, 635.0)]):
+        plot_speclines(dat, i_el, slim, axs[:Nt, j], j)
+        plot_bgsubtracted_spectrum(dat, i_el, slim, axs[Nt:, j], j)
 
+    fg.tight_layout(pad=1.5, h_pad=1.8)
     show()
