@@ -19,7 +19,7 @@ import scipy.signal
 from datetime import datetime
 from matplotlib.pyplot import figure, show
 
-IndexElevation = typing.Sequence[typing.Dict[str, int]]
+IndexElevation = typing.Dict[str, int]
 color = {"equatorward": "red", "feature": "blue", "poleward": "green"}
 feature = ["picket fence", "STEVE"]
 
@@ -99,54 +99,45 @@ def skip_rows(f: typing.io.TextIO, rows: int):
         f.readline()
 
 
+def get_marker(dat: xarray.DataArray) -> str:
+    return None if dat.shape[1] > 100 else "."
+
+
 def plot_speclines(
-    dat: xarray.DataArray,
-    i_el: IndexElevation,
-    wl_minmax: typing.Tuple[float, float] = None,
-    axs=None,
-    j: int = 0,
+    dat: xarray.DataArray, i_el: IndexElevation, ax=None, j: int = 0, ttxt: str = "",
 ):
     """
     elevation angles chosen by inspection of keograms
     in Figures 1 and 2
     """
-    marker = None if wl_minmax is None else "."
-    if axs is None:
+    marker = get_marker(dat)
+    if ax is None:
         fg = figure(1)
         fg.clf()
-        axs = fg.subplots(dat.shape[0], 1, sharex=True)
+        ax = fg.gca()
     else:
         fg = None
 
-    for i in range(dat.shape[0]):
-        ax = axs[i]
-        for k, v in i_el[i].items():
-            ax.plot(
-                dat.wavelength, dat[i].loc[v, :].values, label=k, color=color[k], marker=marker
-            )
+    for k, v in i_el.items():
+        ax.plot(dat.wavelength, dat.loc[v, :].values, label=k, color=color[k], marker=marker)
+
+    if j == 0:
+        ax.set_ylabel("Luminosity (Rayleighs)")
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
-        ax.set_title(f"{feature[i]}: " + str(dat.time[i].values)[:-10])
-        if j == 0:
-            ax.set_ylabel("Luminosity (Rayleighs)")
-        ax.grid(True)
-        ax.set_ylim(0, None)
-        if wl_minmax is None:
-            ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
-        else:
-            ax.set_xlim(wl_minmax)
+
+    ax.grid(True)
+    ax.set_ylim(0, None)
+    ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
     ax.legend()
     if fg is not None:
+        ax.set_title(ttxt + str(dat.time.values)[:-10])
         ax.set_xlabel("wavelength (nm)")
         fg.suptitle("Original paper Figures 1 and 2")
 
 
 def plot_bgsubtracted_spectrum(
-    dat: xarray.DataArray,
-    i_el: IndexElevation,
-    wl_minmax: typing.Tuple[float, float] = None,
-    axs=None,
-    j: int = 0,
+    dat: xarray.DataArray, i_el: IndexElevation, ax=None, j: int = 0, ttxt: str = "",
 ):
     """
     elevation angles chosen by inspection of keograms
@@ -154,53 +145,52 @@ def plot_bgsubtracted_spectrum(
 
     Here, we additionally apply background subtraction
     """
-    marker = None if wl_minmax is None else "."
-    if axs is None:
+    if not dat.ndim == 2:
+        raise ValueError("data should be elevation_bin x wavelength")
+
+    marker = get_marker(dat)
+    if ax is None:
         fg = figure(1)
         fg.clf()
-        axs = fg.subplots(dat.shape[0], 1, sharex=True)
+        ax = fg.gca()
     else:
         fg = None
 
-    for i in range(dat.shape[0]):
-        ax = axs[i]
+    bg_steve = dat.loc[i_el["feature"], :]
+    bg_equatorward = dat.loc[i_el["equatorward"], :]
+    bg_poleward = dat.loc[i_el["poleward"], :]
+    ax.plot(
+        dat.wavelength,
+        bg_steve - bg_equatorward,
+        label="feature $-$ equatorward",
+        color=color["equatorward"],
+        marker=marker,
+    )
+    ax.plot(
+        dat.wavelength,
+        bg_steve - bg_poleward,
+        label="feature $-$ poleward",
+        color=color["poleward"],
+        marker=marker,
+    )
 
-        bg_steve = dat[i].loc[i_el[i]["feature"], :]
-        bg_equatorward = dat[i].loc[i_el[i]["equatorward"], :]
-        bg_poleward = dat[i].loc[i_el[i]["poleward"], :]
-        ax.plot(
-            dat.wavelength,
-            bg_steve - bg_equatorward,
-            label="bg subtract equatorward",
-            color=color["equatorward"],
-            marker=marker,
-        )
-        ax.plot(
-            dat.wavelength,
-            bg_steve - bg_poleward,
-            label="bg subtract poleward",
-            color=color["poleward"],
-            marker=marker,
-        )
+    if j == 0:
+        ax.set_ylabel("Luminosity (Rayleighs)")
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
-        ax.set_title(f"{feature[i]}: " + str(dat.time[i].values)[:-10])
-        if j == 0:
-            ax.set_ylabel("Luminosity (Rayleighs)")
-        ax.grid(True)
-        ax.set_ylim(0, None)
-        if wl_minmax is None:
-            ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
-        else:
-            ax.set_xlim(wl_minmax)
+
+    ax.grid(True)
+    ax.set_ylim(0, None)
+    ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
 
     ax.legend()
     ax.set_xlabel("wavelength (nm)")
     if fg is not None:
+        ax.set_title(ttxt + str(dat.time.values)[:-10])
         fg.suptitle("background subtracted intensity")
 
 
-def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
+def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, int]]):
     """
     the paper authors provide only two time steps of data.
     We present them together to help show we have used the same elevation angles
@@ -230,7 +220,6 @@ def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("path", help="path to paper data directory")
-    p.add_argument("-paper", help="show paper figure plots", action="store_true")
     P = p.parse_args()
 
     i_el = [
@@ -240,18 +229,21 @@ if __name__ == "__main__":
 
     dat = load_spectrum(P.path)
 
-    if P.paper:
-        plot_speclines(dat, i_el)
-        plot_keogram(dat, i_el)
-        plot_bgsubtracted_spectrum(dat, i_el)
+    plot_keogram(dat, i_el)
 
-    Nt = dat.shape[0]
-    fg = figure(10, figsize=(18, 16))
-    fg.clf()
-    axs = fg.subplots(Nt * 2, 4)
-    for j, slim in enumerate([None, (425.0, 430.0), (555.0, 560.0), (625.0, 635.0)]):
-        plot_speclines(dat, i_el, slim, axs[:Nt, j], j)
-        plot_bgsubtracted_spectrum(dat, i_el, slim, axs[Nt:, j], j)
+    for i, d in enumerate(dat):  # each time/event
+        plot_speclines(d, i_el[i])
 
-    fg.tight_layout(pad=1.5, h_pad=1.8)
+        plot_bgsubtracted_spectrum(d, i_el[i])
+
+        fg = figure(10 + i, figsize=(18, 16))
+        fg.clf()
+        axs = fg.subplots(2, 4)
+        fg.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
+        for j, slim in enumerate([(420.0, 435.0), (550.0, 565.0), (620.0, 640.0)]):
+            k = (d.wavelength >= slim[0]) & (d.wavelength < slim[1])
+            plot_speclines(d[:, k], i_el[i], axs[0, j], j, feature[i])
+            plot_bgsubtracted_spectrum(d[:, k], i_el[i], axs[1, j], j, feature[i])
+
+        # fg.tight_layout(pad=1.5, h_pad=1.8)
     show()
