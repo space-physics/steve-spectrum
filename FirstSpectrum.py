@@ -111,12 +111,6 @@ def plot_speclines(
     in Figures 1 and 2
     """
     marker = get_marker(dat)
-    if ax is None:
-        fg = figure(1)
-        fg.clf()
-        ax = fg.gca()
-    else:
-        fg = None
 
     for k, v in i_el.items():
         ax.plot(dat.wavelength, dat.loc[v, :].values, label=k, color=color[k], marker=marker)
@@ -130,10 +124,8 @@ def plot_speclines(
     ax.set_ylim(0, None)
     ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
     ax.legend()
-    if fg is not None:
-        ax.set_title(ttxt + str(dat.time.values)[:-10])
-        ax.set_xlabel("wavelength (nm)")
-        fg.suptitle("Original paper Figures 1 and 2")
+    ax.set_title(ttxt + str(dat.time.values)[:-10])
+    ax.set_xlabel("wavelength (nm)")
 
 
 def plot_bgsubtracted_spectrum(
@@ -149,12 +141,6 @@ def plot_bgsubtracted_spectrum(
         raise ValueError("data should be elevation_bin x wavelength")
 
     marker = get_marker(dat)
-    if ax is None:
-        fg = figure(1)
-        fg.clf()
-        ax = fg.gca()
-    else:
-        fg = None
 
     bg_steve = dat.loc[i_el["feature"], :]
     bg_equatorward = dat.loc[i_el["equatorward"], :]
@@ -185,9 +171,7 @@ def plot_bgsubtracted_spectrum(
 
     ax.legend()
     ax.set_xlabel("wavelength (nm)")
-    if fg is not None:
-        ax.set_title(ttxt + str(dat.time.values)[:-10])
-        fg.suptitle("background subtracted intensity")
+    ax.set_title(ttxt + str(dat.time.values)[:-10])
 
 
 def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, int]]):
@@ -232,13 +216,16 @@ if __name__ == "__main__":
     plot_keogram(dat, i_el)
 
     for i, d in enumerate(dat):  # each time/event
-        plot_speclines(d, i_el[i])
-
-        plot_bgsubtracted_spectrum(d, i_el[i])
+        fg1 = figure(1)
+        fg1.clf()
+        axs1 = fg1.subplots(2, 1, sharex=True)
+        fg1.suptitle("Original paper Figures 1 and 2")
+        plot_speclines(d, i_el[i], ax=axs1[0])
+        plot_bgsubtracted_spectrum(d, i_el[i], ax=axs1[1])
 
         fg = figure(10 + i, figsize=(18, 16))
         fg.clf()
-        axs = fg.subplots(2, 4)
+        axs = fg.subplots(2, 3)
         fg.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
         for j, slim in enumerate([(420.0, 435.0), (550.0, 565.0), (620.0, 640.0)]):
             k = (d.wavelength >= slim[0]) & (d.wavelength < slim[1])
