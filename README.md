@@ -5,6 +5,12 @@
 
 Plots and analysis for the STEVE aeronomy phenomenon
 
+## Install
+
+```sh
+python -m pip install -e .
+```
+
 ## Papers
 
 [First Observations From the TREx Spectrograph: The Optical Spectrum of STEVE and the Picket Fence Phenomena](https://doi.org/10.1029/2019GL083272)
