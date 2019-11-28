@@ -103,9 +103,7 @@ def get_marker(dat: xarray.DataArray) -> str:
     return None if dat.shape[1] > 100 else "."
 
 
-def plot_speclines(
-    dat: xarray.DataArray, i_el: IndexElevation, ax=None, j: int = 0, ttxt: str = "",
-):
+def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
     """
     elevation angles chosen by inspection of keograms
     in Figures 1 and 2
@@ -124,13 +122,9 @@ def plot_speclines(
     ax.set_ylim(0, None)
     ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
     ax.legend()
-    ax.set_title(ttxt + str(dat.time.values)[:-10])
-    ax.set_xlabel("wavelength (nm)")
 
 
-def plot_bgsubtracted_spectrum(
-    dat: xarray.DataArray, i_el: IndexElevation, ax=None, j: int = 0, ttxt: str = "",
-):
+def plot_bgsubtracted_spectrum(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
     """
     elevation angles chosen by inspection of keograms
     in Figures 1 and 2
@@ -168,10 +162,7 @@ def plot_bgsubtracted_spectrum(
     ax.grid(True)
     ax.set_ylim(0, None)
     ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
-
     ax.legend()
-    ax.set_xlabel("wavelength (nm)")
-    ax.set_title(ttxt + str(dat.time.values)[:-10])
 
 
 def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, int]]):
@@ -187,7 +178,7 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     """
 
     j_el = slice(90, 125)  # arbitrary
-    fg = figure(2)
+    fg = figure(20)
     fg.clf()
     ax = fg.gca()
     keogram = dat.loc[:, j_el, :].sum("wavelength")
@@ -216,12 +207,13 @@ if __name__ == "__main__":
     plot_keogram(dat, i_el)
 
     for i, d in enumerate(dat):  # each time/event
-        fg1 = figure(1)
+        fg1 = figure(1 + i, figsize=(12, 10))
         fg1.clf()
         axs1 = fg1.subplots(2, 1, sharex=True)
-        fg1.suptitle("Original paper Figures 1 and 2")
+        fg1.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
         plot_speclines(d, i_el[i], ax=axs1[0])
         plot_bgsubtracted_spectrum(d, i_el[i], ax=axs1[1])
+        axs1[1].set_xlabel("wavelength (nm)")
 
         fg = figure(10 + i, figsize=(18, 16))
         fg.clf()
@@ -229,8 +221,8 @@ if __name__ == "__main__":
         fg.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
         for j, slim in enumerate([(420.0, 435.0), (550.0, 565.0), (620.0, 640.0)]):
             k = (d.wavelength >= slim[0]) & (d.wavelength < slim[1])
-            plot_speclines(d[:, k], i_el[i], axs[0, j], j, feature[i])
-            plot_bgsubtracted_spectrum(d[:, k], i_el[i], axs[1, j], j, feature[i])
-
+            plot_speclines(d[:, k], i_el[i], axs[0, j], j)
+            plot_bgsubtracted_spectrum(d[:, k], i_el[i], axs[1, j], j)
+            axs[1, j].set_xlabel("wavelength (nm)")
         # fg.tight_layout(pad=1.5, h_pad=1.8)
     show()
