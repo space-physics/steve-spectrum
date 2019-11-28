@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-python FirstSpectrumFigure1.py ~/data/2019GL083272
+python FirstSpectrum.py ~/data/2019GL083272
 
 Four main sources of discrepancy from paper figures:
 
@@ -20,7 +20,8 @@ from datetime import datetime
 from matplotlib.pyplot import figure, show
 
 IndexElevation = typing.Sequence[typing.Dict[str, int]]
-color = {"equatorward": "red", "steve": "blue", "poleward": "green"}
+color = {"equatorward": "red", "feature": "blue", "poleward": "green"}
+feature = ["picket fence", "STEVE"]
 
 
 def load_spectrum(path: Path) -> xarray.DataArray:
@@ -36,7 +37,10 @@ def load_spectrum(path: Path) -> xarray.DataArray:
         path = path.parent
         time: typing.List[typing.Union[str, datetime]] = ["unknown"]
     else:
-        flist = [path / "TREx_spectrograph_20180410_063045.txt", path / "TREx_spectrograph_20180410_064015.txt"]
+        flist = [
+            path / "TREx_spectrograph_20180410_063045.txt",
+            path / "TREx_spectrograph_20180410_064015.txt",
+        ]
         time = [datetime(2018, 4, 10, 6, 30, 45), datetime(2018, 4, 10, 6, 40, 15)]
     if not path.is_dir():
         raise NotADirectoryError(
@@ -61,7 +65,7 @@ def load_spectrum(path: Path) -> xarray.DataArray:
     # the paper did not specify the type or parameters of the spectrum smoothing used.
     # here we use a typical Savitsky-Golay filter with arbitrary parameters
     # observe with Figure 1 that  windows_length=5, polyorder=3 has a reasonably
-    # good match to the spectrum.
+    # good match to the article spectrum figures w.r.t. trends and values.
     arr = scipy.signal.savgol_filter(arr, window_length=5, polyorder=3, axis=2)
 
     # can't have negative intensity, assuming detector bias
@@ -95,29 +99,101 @@ def skip_rows(f: typing.io.TextIO, rows: int):
         f.readline()
 
 
-def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation):
+def plot_speclines(
+    dat: xarray.DataArray,
+    i_el: IndexElevation,
+    wl_minmax: typing.Tuple[float, float] = None,
+    axs=None,
+):
     """
     elevation angles chosen by inspection of keograms
     in Figures 1 and 2
     """
-    N = dat.shape[0]
-    fg = figure(1)
-    fg.clf()
-    axs = fg.subplots(N, 1, sharex=True)
+    marker = None if wl_minmax is None else "."
+    if axs is None:
+        fg = figure(1)
+        fg.clf()
+        axs = fg.subplots(dat.shape[0], 1, sharex=True)
+    else:
+        fg = None
 
     for i in range(dat.shape[0]):
         ax = axs[i]
         for k, v in i_el[i].items():
-            ax.plot(dat.wavelength, dat[i].loc[v, :].values, label=k, color=color[k])
+            ax.plot(
+                dat.wavelength, dat[i].loc[v, :].values, label=k, color=color[k], marker=marker
+            )
         for w in (427.8, 557.7, 630.0):
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
-        ax.set_title(str(dat.time[i].values)[:-10])
+        ax.set_title(f"{feature[i]}: " + str(dat.time[i].values)[:-10])
         ax.set_ylabel("Luminosity (Rayleighs)")
         ax.grid(True)
         ax.set_ylim(0, None)
-    ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
+        if wl_minmax is None:
+            ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
+        else:
+            ax.set_xlim(wl_minmax)
     ax.legend()
     ax.set_xlabel("wavelength (nm)")
+    if fg is not None:
+        fg.suptitle("Original paper Figures 1 and 2")
+
+
+def plot_bgsubtracted_spectrum(
+    dat: xarray.DataArray,
+    i_el: IndexElevation,
+    wl_minmax: typing.Tuple[float, float] = None,
+    axs=None,
+):
+    """
+    elevation angles chosen by inspection of keograms
+    in Figures 1 and 2
+
+    Here, we additionally apply background subtraction
+    """
+    marker = None if wl_minmax is None else "."
+    if axs is None:
+        fg = figure(1)
+        fg.clf()
+        axs = fg.subplots(dat.shape[0], 1, sharex=True)
+    else:
+        fg = None
+
+    for i in range(dat.shape[0]):
+        ax = axs[i]
+
+        bg_steve = dat[i].loc[i_el[i]["feature"], :]
+        bg_equatorward = dat[i].loc[i_el[i]["equatorward"], :]
+        bg_poleward = dat[i].loc[i_el[i]["poleward"], :]
+        ax.plot(
+            dat.wavelength,
+            bg_steve - bg_equatorward,
+            label="bg subtract equatorward",
+            color=color["equatorward"],
+            marker=marker,
+        )
+        ax.plot(
+            dat.wavelength,
+            bg_steve - bg_poleward,
+            label="bg subtract poleward",
+            color=color["poleward"],
+            marker=marker,
+        )
+        for w in (427.8, 557.7, 630.0):
+            ax.axvline(w, color="black", linestyle="--", alpha=0.5)
+        ax.set_title(f"{feature[i]}: " + str(dat.time[i].values)[:-10])
+        ax.set_ylabel("Luminosity (Rayleighs)")
+        ax.grid(True)
+        ax.set_ylim(0, None)
+        if wl_minmax is None:
+            ax.set_xlim(dat.wavelength[0], dat.wavelength[-1])
+        else:
+            ax.set_xlim(wl_minmax)
+
+    ax.legend()
+    ax.set_xlabel("wavelength (nm)")
+    if fg is not None:
+        fg.suptitle("background subtracted intensity")
 
 
 def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
@@ -150,16 +226,27 @@ def plot_keogram(dat: xarray.DataArray, i_el: IndexElevation):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("path", help="path to paper data directory")
+    p.add_argument("-paper", help="show paper figure plots", action="store_true")
     P = p.parse_args()
 
     i_el = [
-        {"equatorward": 116, "steve": 119, "poleward": 122},
-        {"equatorward": 99, "steve": 103, "poleward": 107},
+        {"equatorward": 116, "feature": 119, "poleward": 122},
+        {"equatorward": 99, "feature": 103, "poleward": 107},
     ]
 
     dat = load_spectrum(P.path)
 
-    plot_speclines(dat, i_el)
-    plot_keogram(dat, i_el)
+    if P.paper:
+        plot_speclines(dat, i_el)
+        plot_keogram(dat, i_el)
+        plot_bgsubtracted_spectrum(dat, i_el)
+
+    Nt = dat.shape[0]
+    fg = figure(10)
+    fg.clf()
+    axs = fg.subplots(Nt * 2, 4)
+    for i, slim in enumerate([None, (425.0, 430.0), (555.0, 560.0), (625.0, 635.0)]):
+        plot_speclines(dat, i_el, slim, axs[:Nt, i])
+        plot_bgsubtracted_spectrum(dat, i_el, slim, axs[Nt:, i])
 
     show()
