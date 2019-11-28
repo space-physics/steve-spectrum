@@ -191,8 +191,9 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     ax.set_xlabel("time (UTC)")
     ax.set_ylabel("elevation bin (unitless)")
     # label each pixel column with time
-    time = [str(t)[:-10] for t in dat.time.values]
-    ax.set_xticks(time)
+    ax.set_xticks(ax.get_xticks()[::2])  # only two data points
+    time = dat.time.values.astype('datetime64[us]').astype(datetime)
+    ax.set_xticklabels([t[11:] for t in time.astype(str)])
 
 
 if __name__ == "__main__":
