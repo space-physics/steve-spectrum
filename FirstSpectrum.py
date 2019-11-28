@@ -2,12 +2,6 @@
 """
 python FirstSpectrum.py ~/data/2019GL083272
 
-Four main sources of discrepancy from paper figures:
-
-1. picking the same elevation bins
-2. flipping poleward / equatorward elevation direction
-3. spectral smoothing
-4. bin width
 """
 import typing
 import typing.io
