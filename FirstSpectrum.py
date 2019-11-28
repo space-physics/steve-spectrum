@@ -20,7 +20,7 @@ from datetime import datetime
 from matplotlib.pyplot import figure, show
 
 IndexElevation = typing.Dict[str, int]
-color = {"equatorward": "red", "feature": "blue", "poleward": "green"}
+color = {"quiet": "black", "equatorward": "red", "feature": "blue", "poleward": "green"}
 feature = ["picket fence", "STEVE"]
 
 
@@ -177,7 +177,7 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     as free variables.
     """
 
-    j_el = slice(90, 125)  # arbitrary
+    j_el = slice(70, 125)  # arbitrary
     fg = figure(20)
     fg.clf()
     ax = fg.gca()
@@ -185,11 +185,14 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     keogram.name = "wavelength-summed luminosity"
     keogram.T.plot(ax=ax)
     for j, i in enumerate(i_el):
-        ax.scatter([dat.time[j].values] * 3, i.values(), s=100, c=color.values())
+        ax.scatter([dat.time[j].values] * 4, i.values(), s=100, c=color.values())
 
     ax.set_title("keogram")
     ax.set_xlabel("time (UTC)")
     ax.set_ylabel("elevation bin (unitless)")
+    # label each pixel column with time
+    time = [str(t)[:-10] for t in dat.time.values]
+    ax.set_xticks(time)
 
 
 if __name__ == "__main__":
@@ -198,8 +201,8 @@ if __name__ == "__main__":
     P = p.parse_args()
 
     i_el = [
-        {"equatorward": 116, "feature": 119, "poleward": 122},
-        {"equatorward": 99, "feature": 103, "poleward": 107},
+        {"quiet": 100, "equatorward": 116, "feature": 119, "poleward": 122},
+        {"quiet": 90, "equatorward": 99, "feature": 103, "poleward": 107},
     ]
 
     dat = load_spectrum(P.path)
