@@ -15,6 +15,7 @@ from matplotlib.pyplot import figure, show
 
 IndexElevation = typing.Dict[str, int]
 color = {"quiet": "black", "equatorward": "red", "feature": "blue", "poleward": "green"}
+color_lines = {427.8: "blue", 557.7: "yellowgreen", 630.0: "red"}
 feature = ["picket fence", "STEVE"]
 
 
@@ -97,9 +98,13 @@ def get_marker(dat: xarray.DataArray) -> str:
     return None if dat.shape[1] > 100 else "."
 
 
-def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
+def plot_speclines_wavelength(
+    dat: xarray.DataArray, i_el: IndexElevation, i_wl: typing.Sequence[float], ax, j: int = 0
+):
     """
-    elevation angles chosen by inspection of keograms
+    plots luminosity vs wavelength for chosen elevation bins
+
+    elevation bins chosen by inspection of keograms
     in Figures 1 and 2
     """
     marker = get_marker(dat)
@@ -109,7 +114,7 @@ def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
 
     if j == 0:
         ax.set_ylabel("Luminosity (Rayleighs)")
-        for w in (427.8, 557.7, 630.0):
+        for w in i_wl:
             ax.axvline(w, color="black", linestyle="--", alpha=0.5)
 
     ax.grid(True)
@@ -118,9 +123,17 @@ def plot_speclines(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
     ax.legend()
 
 
+def plot_speclines_elevation(dat: xarray.DataArray, i_wl: typing.Sequence[float], ax):
+    for i in i_wl:
+        ax.plot(
+            dat.elevation, dat.sel(wavelength=i, method="nearest"), label=i, color=color_lines[i]
+        )
+    ax.legend()
+
+
 def plot_bgsubtracted_spectrum(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
     """
-    elevation angles chosen by inspection of keograms
+    elevation bins chosen by inspection of keograms
     in Figures 1 and 2
 
     Here, we additionally apply background subtraction
@@ -159,7 +172,7 @@ def plot_bgsubtracted_spectrum(dat: xarray.DataArray, i_el: IndexElevation, ax, 
     ax.legend()
 
 
-def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, int]]):
+def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, int]], ax):
     """
     the paper authors provide only two time steps of data.
     We present them together to help show we have used the same elevation angles
@@ -172,9 +185,6 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     """
 
     j_el = slice(70, 125)  # arbitrary
-    fg = figure(20)
-    fg.clf()
-    ax = fg.gca()
     keogram = dat.loc[:, j_el, :].sum("wavelength")
     keogram.name = "wavelength-summed luminosity"
     keogram.T.plot(ax=ax)
@@ -186,13 +196,14 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     ax.set_ylabel("elevation bin (unitless)")
     # label each pixel column with time
     ax.set_xticks(ax.get_xticks()[::2])  # only two data points
-    time = dat.time.values.astype('datetime64[us]').astype(datetime)
+    time = dat.time.values.astype("datetime64[us]").astype(datetime)
     ax.set_xticklabels([t[11:] for t in time.astype(str)])
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("path", help="path to paper data directory")
+    p.add_argument("-p", "--plots", help="plot names to plot", nargs="+")
     P = p.parse_args()
 
     i_el = [
@@ -200,27 +211,54 @@ if __name__ == "__main__":
         {"quiet": 90, "equatorward": 99, "feature": 103, "poleward": 107},
     ]
 
+    N = len(i_el)
+
+    i_wl = (427.8, 557.7, 630.0)
+
     dat = load_spectrum(P.path)
 
-    plot_keogram(dat, i_el)
-
-    for i, d in enumerate(dat):  # each time/event
-        fg1 = figure(1 + i, figsize=(12, 10))
-        fg1.clf()
-        axs1 = fg1.subplots(2, 1, sharex=True)
-        fg1.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
-        plot_speclines(d, i_el[i], ax=axs1[0])
-        plot_bgsubtracted_spectrum(d, i_el[i], ax=axs1[1])
-        axs1[1].set_xlabel("wavelength (nm)")
-
-        fg = figure(10 + i, figsize=(18, 16))
+    if dat.shape[0] > N:
+        raise ValueError(f"expecting no more than 2 files in {P.path}")
+    # %% figure setup
+    if not P.plots or "keo" in P.plots:
+        fg = figure(120)
         fg.clf()
-        axs = fg.subplots(2, 3)
-        fg.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
-        for j, slim in enumerate([(420.0, 435.0), (550.0, 565.0), (620.0, 640.0)]):
-            k = (d.wavelength >= slim[0]) & (d.wavelength < slim[1])
-            plot_speclines(d[:, k], i_el[i], axs[0, j], j)
-            plot_bgsubtracted_spectrum(d[:, k], i_el[i], axs[1, j], j)
-            axs[1, j].set_xlabel("wavelength (nm)")
-        # fg.tight_layout(pad=1.5, h_pad=1.8)
+        plot_keogram(dat, i_el, fg.gca())
+
+    if not P.plots or "el" in P.plots:
+        fg20 = figure(20)
+        fg20.clf()
+        ax20 = fg20.subplots(N, 1, sharex=True)
+        ax20[-1].set_xlabel("elevation bin (unitless)")
+        ax20[-1].set_ylabel("luminosity (Rayleighs)")
+    # %% figure loop
+    for i, d in enumerate(dat):  # each time/event
+        # %% paper plot
+        if not P.plots or "paper" in P.plots:
+            fg1 = figure(1 + i, figsize=(12, 10))
+            fg1.clf()
+            axs1 = fg1.subplots(N, 1, sharex=True)
+            fg1.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
+            plot_speclines_wavelength(d, i_el[i], i_wl, ax=axs1[0])
+            plot_bgsubtracted_spectrum(d, i_el[i], ax=axs1[1])
+            axs1[-1].set_xlabel("wavelength (nm)")
+
+        # %% zoomed paper plot
+        if not P.plots or "zoom" in P.plots:
+            fg = figure(10 + i, figsize=(18, 16))
+            fg.clf()
+            axs = fg.subplots(N, 3)
+            fg.suptitle(feature[i] + ": " + str(d.time.values)[:-10])
+            for j, slim in enumerate([(420.0, 435.0), (550.0, 565.0), (620.0, 640.0)]):
+                k = (d.wavelength >= slim[0]) & (d.wavelength < slim[1])
+                plot_speclines_wavelength(d[:, k], i_el[i], i_wl, axs[0, j], j)
+                plot_bgsubtracted_spectrum(d[:, k], i_el[i], axs[1, j], j)
+                axs[-1, j].set_xlabel("wavelength (nm)")
+            # fg.tight_layout(pad=1.5, h_pad=1.8)
+
+        # %% lines vs elevation plot
+        if not P.plots or "el" in P.plots:
+            plot_speclines_elevation(d, i_wl, ax=ax20[i])
+            ax20[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
+
     show()
