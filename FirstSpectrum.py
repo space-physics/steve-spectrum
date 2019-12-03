@@ -16,7 +16,9 @@ from matplotlib.pyplot import figure, show
 IndexElevation = typing.Dict[str, int]
 color = {"quiet": "black", "equatorward": "red", "feature": "blue", "poleward": "green"}
 color_lines = {427.8: "blue", 557.7: "yellowgreen", 630.0: "red"}
+N2p1N_band = (421.6, 428.3)
 feature = ["picket fence", "STEVE"]
+keo_el = slice(70, 125)  # roughly match inset of Figure 1 and 2
 
 
 def load_spectrum(path: Path) -> xarray.DataArray:
@@ -124,10 +126,23 @@ def plot_speclines_wavelength(
 
 
 def plot_speclines_elevation(dat: xarray.DataArray, i_wl: typing.Sequence[float], ax):
+    """
+    plot luminosity vs. elevation bin
+    """
+    # keep only elevation bins of interest
+    dat = dat.loc[keo_el, :]
+
     for i in i_wl:
-        ax.plot(
-            dat.elevation, dat.sel(wavelength=i, method="nearest"), label=i, color=color_lines[i]
-        )
+        if i == 427.8:
+            j = [
+                abs(dat.wavelength.values - N2p1N_band[0]).argmin(),
+                abs(dat.wavelength.values - N2p1N_band[1]).argmin(),
+            ]
+            d = dat[:, j[0]:j[1] + 1].sum("wavelength")
+        else:
+            d = dat.sel(wavelength=i, method="nearest")
+
+        ax.plot(dat.elevation, d.values, label=i, color=color_lines[i])
     ax.legend()
 
 
@@ -184,8 +199,7 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
     as free variables.
     """
 
-    j_el = slice(70, 125)  # arbitrary
-    keogram = dat.loc[:, j_el, :].sum("wavelength")
+    keogram = dat.loc[:, keo_el, :].sum("wavelength")
     keogram.name = "wavelength-summed luminosity"
     keogram.T.plot(ax=ax)
     for j, i in enumerate(i_el):
