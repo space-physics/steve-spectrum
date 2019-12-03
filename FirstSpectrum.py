@@ -146,6 +146,24 @@ def plot_speclines_elevation(dat: xarray.DataArray, i_el: int, i_wl: typing.Sequ
     ax.axvline(i_el, color="k", linestyle="--")
 
 
+def plot_ratio_elevation(dat: xarray.DataArray, i_el: int, ax):
+    """
+    plot intensity ratios
+    """
+    # keep only elevation bins of interest
+    dat = dat.loc[keo_el, :]
+
+    i4278 = sum_N21N(dat)
+    i5577 = dat.sel(wavelength=557.7, method="nearest")
+    i6300 = dat.sel(wavelength=630.0, method="nearest")
+
+    ax.plot(dat.elevation, i5577 / i4278, label="557.7 / 427.8")
+    ax.plot(dat.elevation, i6300 / i4278, label="630.0 / 427.8")
+    ax.plot(dat.elevation, i6300 / i5577, label="630.0 / 557.7")
+
+    ax.axvline(i_el, color="k", linestyle="--")
+
+
 def sum_N21N(dat: xarray.DataArray) -> xarray.DataArray:
     j = [
         abs(dat.wavelength.values - N2p1N_band[0]).argmin(),
@@ -291,6 +309,15 @@ if __name__ == "__main__":
         fg22.clf()
         ax22 = fg22.subplots(N, 1, sharex=True)
         plot_N21N_elevation(dat, ax22)
+
+    if not P.plots or "ratio" in P.plots:
+        fg23 = figure(23)
+        fg23.clf()
+        ax23 = fg23.subplots(N, 1, sharex=True)
+        ax23[-1].set_xlabel("elevation bin (unitless)")
+        ax23[-1].set_ylabel("luminosity (Rayleighs)")
+        fg23.tight_layout()
+
     # %% figure loop
     for i, d in enumerate(dat):  # each time/event
         # %% paper plot
@@ -327,5 +354,10 @@ if __name__ == "__main__":
             )
             ax21[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
             ax21[0].legend()
+
+        if not P.plots or "ratio" in P.plots:
+            plot_ratio_elevation(d, i_el[i]["feature"], ax=ax23[i])
+            ax23[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
+            ax23[0].legend()
 
     show()
