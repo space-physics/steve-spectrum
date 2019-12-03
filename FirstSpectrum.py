@@ -278,11 +278,19 @@ if __name__ == "__main__":
         ax20 = fg20.subplots(N, 1, sharex=True)
         ax20[-1].set_xlabel("elevation bin (unitless)")
         ax20[-1].set_ylabel("luminosity (Rayleighs)")
+        fg20.tight_layout()
 
-        fg21 = figure(21)
+        fg21 = figure(21, figsize=(12, 10))
         fg21.clf()
         ax21 = fg21.subplots(N, 1, sharex=True)
-        plot_N21N_elevation(dat, ax21)
+        ax21[-1].set_xlabel("elevation bin (unitless)")
+        ax21[-1].set_ylabel("luminosity (Rayleighs)")
+        fg21.tight_layout()
+
+        fg22 = figure(22)
+        fg22.clf()
+        ax22 = fg22.subplots(N, 1, sharex=True)
+        plot_N21N_elevation(dat, ax22)
     # %% figure loop
     for i, d in enumerate(dat):  # each time/event
         # %% paper plot
@@ -313,5 +321,11 @@ if __name__ == "__main__":
             plot_speclines_elevation(d, i_el[i]["feature"], i_wl, ax=ax20[i])
             ax20[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
             ax20[0].legend()
+
+            plot_speclines_elevation(
+                d - d.loc[i_el[i]["equatorward"], :], i_el[i]["feature"], i_wl, ax=ax21[i]
+            )
+            ax21[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
+            ax21[0].legend()
 
     show()
