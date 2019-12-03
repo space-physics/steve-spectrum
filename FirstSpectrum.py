@@ -16,7 +16,10 @@ from matplotlib.pyplot import figure, show
 IndexElevation = typing.Dict[str, int]
 color = {"quiet": "black", "equatorward": "red", "feature": "blue", "poleward": "green"}
 color_lines = {427.8: "blue", 557.7: "yellowgreen", 630.0: "red"}
-N2p1N_band = (421.6, 428.3)
+
+N2p1N_band = (424.5, 427.9)  # (0, 1)
+# N2p1N_band = (421.6, 428.3)  # (0, 1) and (1, 2)
+
 feature = ["picket fence", "STEVE"]
 keo_el = slice(70, 125)  # roughly match inset of Figure 1 and 2
 
@@ -70,7 +73,7 @@ def load_spectrum(path: Path) -> xarray.DataArray:
 
     dat = xarray.DataArray(
         data=arr,
-        name="spectrograh",
+        name="luminosity (R)",
         dims=("time", "elevation", "wavelength"),
         coords={"time": time, "elevation": range(arr.shape[1]), "wavelength": wavelengths},
     )
@@ -125,7 +128,7 @@ def plot_speclines_wavelength(
     ax.legend()
 
 
-def plot_speclines_elevation(dat: xarray.DataArray, i_wl: typing.Sequence[float], ax):
+def plot_speclines_elevation(dat: xarray.DataArray, i_el: int, i_wl: typing.Sequence[float], ax):
     """
     plot luminosity vs. elevation bin
     """
@@ -134,16 +137,46 @@ def plot_speclines_elevation(dat: xarray.DataArray, i_wl: typing.Sequence[float]
 
     for i in i_wl:
         if i == 427.8:
-            j = [
-                abs(dat.wavelength.values - N2p1N_band[0]).argmin(),
-                abs(dat.wavelength.values - N2p1N_band[1]).argmin(),
-            ]
-            d = dat[:, j[0]:j[1] + 1].sum("wavelength")
+            d = sum_N21N(dat)
         else:
             d = dat.sel(wavelength=i, method="nearest")
 
         ax.plot(dat.elevation, d.values, label=i, color=color_lines[i])
-    ax.legend()
+
+    ax.axvline(i_el, color="k", linestyle="--")
+
+
+def sum_N21N(dat: xarray.DataArray) -> xarray.DataArray:
+    j = [
+        abs(dat.wavelength.values - N2p1N_band[0]).argmin(),
+        abs(dat.wavelength.values - N2p1N_band[1]).argmin(),
+    ]
+
+    return dat[:, j[0]: j[1] + 1].sum("wavelength")
+
+
+def plot_N21N_elevation(dat: xarray.DataArray, ax):
+    """
+    plot luminosity vs. elevation bin
+    """
+    # keep only elevation bins of interest
+    dat = dat.loc[:, keo_el, :]
+
+    j = [
+        abs(dat.wavelength.values - N2p1N_band[0]).argmin(),
+        abs(dat.wavelength.values - N2p1N_band[1]).argmin(),
+    ]
+
+    for i, (d, a) in enumerate(zip(dat, ax)):
+        d = d[:, j[0]: j[1] + 1]
+
+        d.plot(ax=a)
+        a.set_title(feature[i] + ": " + str(d.time.values)[:-10])
+
+    ax[1].set_ylabel("elevation bin (unitless)")
+    ax[0].set_ylabel("")
+    ax[1].set_xlabel("wavelength (nm)")
+    ax[0].set_xlabel("")
 
 
 def plot_bgsubtracted_spectrum(dat: xarray.DataArray, i_el: IndexElevation, ax, j: int = 0):
@@ -240,11 +273,16 @@ if __name__ == "__main__":
         plot_keogram(dat, i_el, fg.gca())
 
     if not P.plots or "el" in P.plots:
-        fg20 = figure(20)
+        fg20 = figure(20, figsize=(12, 10))
         fg20.clf()
         ax20 = fg20.subplots(N, 1, sharex=True)
         ax20[-1].set_xlabel("elevation bin (unitless)")
         ax20[-1].set_ylabel("luminosity (Rayleighs)")
+
+        fg21 = figure(21)
+        fg21.clf()
+        ax21 = fg21.subplots(N, 1, sharex=True)
+        plot_N21N_elevation(dat, ax21)
     # %% figure loop
     for i, d in enumerate(dat):  # each time/event
         # %% paper plot
@@ -272,7 +310,8 @@ if __name__ == "__main__":
 
         # %% lines vs elevation plot
         if not P.plots or "el" in P.plots:
-            plot_speclines_elevation(d, i_wl, ax=ax20[i])
+            plot_speclines_elevation(d, i_el[i]["feature"], i_wl, ax=ax20[i])
             ax20[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
+            ax20[0].legend()
 
     show()
