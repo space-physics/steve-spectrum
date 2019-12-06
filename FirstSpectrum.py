@@ -13,7 +13,7 @@ import scipy.signal
 from datetime import datetime
 from matplotlib.pyplot import figure, show
 
-import stevespectrum.plots as splots
+import stevespectrum as splots
 
 N2p1N_band01 = (424.5, 427.9)  # [nm]  (0, 1)
 N2p1N_band0112 = (421.6, 428.3)  # [nm]  (0, 1) and (1, 2)
