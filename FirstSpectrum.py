@@ -15,10 +15,9 @@ from matplotlib.pyplot import figure, show
 
 import stevespectrum as splots
 
-N2p1N_band01 = (424.5, 427.9)  # [nm]  (0, 1)
-N2p1N_band0112 = (421.6, 428.3)  # [nm]  (0, 1) and (1, 2)
-
-continuum_band = (450.0, 530.0)  # [nm]
+band_head = {'N2p1N01': (424.5, 427.9),  # (0, 1)
+             'N2p1N0112': (421.6, 428.3),  # (0, 1) and (1, 2)
+             'continuum': (450.0, 530.0)}  # [nm]
 
 feature = ["picket fence", "STEVE"]
 
@@ -111,7 +110,7 @@ if __name__ == "__main__":
 
     N = len(i_el)
 
-    i_wl = ("427.8", "557.7", "630.0", "continuum")
+    i_wl = ("427.8", "557.7", "630.0", "450..530")
 
     dat = load_spectrum(P.path)
 
@@ -124,7 +123,7 @@ if __name__ == "__main__":
         splots.plot_keogram(dat, i_el, fg.gca())
 
     if not P.plots or "el" in P.plots:
-        ax20, ax21 = splots.setup_elevation_plots(dat, feature, N2p1N_band01, N)
+        ax20, ax21 = splots.setup_elevation_plots(dat, feature, band_head['N2p1N01'], N)
 
     if not P.plots or "ratio" in P.plots:
         fg23 = figure(23)
@@ -154,12 +153,12 @@ if __name__ == "__main__":
 
         # %% lines vs elevation plot
         if not P.plots or "el" in P.plots:
-            splots.elevation_plots(d, feature[i], N2p1N_band01, i_el[i], i_wl, ax20[i], ax21[i])
+            splots.elevation_plots(d, feature[i], band_head, i_el[i], i_wl, ax20[i], ax21[i])
             ax20[0].legend()
             ax21[0].legend()
 
         if not P.plots or "ratio" in P.plots:
-            splots.plot_ratio_elevation(d, N2p1N_band01, i_el[i]["feature"], ax=ax23[i])
+            splots.plot_ratio_elevation(d, band_head['N2p1N01'], i_el[i]["feature"], ax=ax23[i])
             ax23[i].set_title(feature[i] + ": " + str(d.time.values)[:-10])
             ax23[0].legend()
 
