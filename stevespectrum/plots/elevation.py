@@ -77,9 +77,11 @@ def elevation_plots(
     plot_speclines_elevation(dat, head_limits, i_el["feature"], i_wl, ax=ax20)
     ax20.set_title(feature + ": " + str(dat.time.values)[:-10])
 
-    plot_speclines_elevation(
-        dat - dat.loc[i_el["equatorward"], :], head_limits, i_el["feature"], i_wl, ax=ax21
-    )
+    bgsub = dat.values - dat.loc[i_el["equatorward"], :].values
+    bgsub[bgsub < 0] = 0.
+    bgsub = xarray.DataArray(bgsub, coords=dat.coords, dims=dat.dims, name=dat.name)
+    # have to force min to zero, since some of the "background" was brighter than "feature"
+    plot_speclines_elevation(bgsub, head_limits, i_el["feature"], i_wl, ax=ax21)
     ax21.set_title(feature + ": " + str(dat.time.values)[:-10])
 
 
