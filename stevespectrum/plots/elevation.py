@@ -41,7 +41,7 @@ def setup_elevation_plots(
     head_limits: typing.Sequence[float],
     N: int,
 ) -> tuple:
-    fg20 = figure(20, figsize=(12, 10))
+    fg20 = figure(220, figsize=(12, 10))
     fg20.clf()
     ax20 = fg20.subplots(N, 1, sharex=True)
     ax20[-1].set_xlabel("elevation bin (unitless)")
@@ -49,20 +49,28 @@ def setup_elevation_plots(
     # fg20.tight_layout()
     fg20.suptitle("No background subtraction")
 
-    fg21 = figure(21, figsize=(12, 10))
+    fg21 = figure(221, figsize=(12, 10))
     fg21.clf()
     ax21 = fg21.subplots(N, 1, sharex=True)
     ax21[-1].set_xlabel("elevation bin (unitless)")
-    ax21[-1].set_ylabel("luminosity (Rayleighs)")
+    ax21[-1].set_ylabel("relative luminosity (Rayleighs)")
     # fg21.tight_layout()
     fg21.suptitle("Equatorward background subtraction")
 
-    fg22 = figure(22)
+    fg22 = figure(222, figsize=(12, 10))
     fg22.clf()
     ax22 = fg22.subplots(N, 1, sharex=True)
-    plot_N21N_elevation(dat, feature, head_limits, ax22)
+    ax22[-1].set_xlabel("elevation bin (unitless)")
+    ax22[-1].set_ylabel("relative luminosity (Rayleighs)")
+    # fg22.tight_layout()
+    fg22.suptitle("Poleward background subtraction")
 
-    return ax20, ax21
+    fg = figure(22)
+    fg.clf()
+    ax = fg.subplots(N, 1, sharex=True)
+    plot_N21N_elevation(dat, feature, head_limits, ax)
+
+    return ax20, ax21, ax22
 
 
 def elevation_plots(
@@ -70,19 +78,23 @@ def elevation_plots(
     feature: str,
     head_limits: typing.Mapping[str, typing.Sequence[float]],
     i_el: typing.Dict[str, int],
-    i_wl: typing.Sequence[str],
+    i_wl: typing.List[str],
     ax20,
     ax21,
+    ax22
 ):
+    # %% raw values
     plot_speclines_elevation(dat, head_limits, i_el["feature"], i_wl, ax=ax20)
     ax20.set_title(feature + ": " + str(dat.time.values)[:-10])
-
-    bgsub = dat.values - dat.loc[i_el["equatorward"], :].values
-    bgsub[bgsub < 0] = 0.
-    bgsub = xarray.DataArray(bgsub, coords=dat.coords, dims=dat.dims, name=dat.name)
-    # have to force min to zero, since some of the "background" was brighter than "feature"
+    # %% background subtraction
+    # note that "background" can be brighter than "feature", which makes negative intensities
+    bgsub = dat - dat.loc[i_el["equatorward"], :]
     plot_speclines_elevation(bgsub, head_limits, i_el["feature"], i_wl, ax=ax21)
     ax21.set_title(feature + ": " + str(dat.time.values)[:-10])
+
+    bgsub = dat - dat.loc[i_el["poleward"], :]
+    plot_speclines_elevation(bgsub, head_limits, i_el["feature"], i_wl, ax=ax22)
+    ax22.set_title(feature + ": " + str(dat.time.values)[:-10])
 
 
 def plot_N21N_elevation(

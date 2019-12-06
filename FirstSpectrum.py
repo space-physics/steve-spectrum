@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     N = len(i_el)
 
-    i_wl = ("427.8", "557.7", "630.0", "450..530")
+    i_wl: typing.List[str] = ["427.8", "557.7", "630.0", "450..530"]
 
     dat = load_spectrum(P.path)
 
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         splots.plot_keogram(dat, i_el, fg.gca())
 
     if not P.plots or "el" in P.plots:
-        ax20, ax21 = splots.setup_elevation_plots(dat, feature, band_head['N2p1N01'], N)
+        ax220, ax221, ax222 = splots.setup_elevation_plots(dat, feature, band_head['N2p1N01'], N)
 
     if not P.plots or "ratio" in P.plots:
         fg23 = figure(23)
@@ -153,9 +153,10 @@ if __name__ == "__main__":
 
         # %% lines vs elevation plot
         if not P.plots or "el" in P.plots:
-            splots.elevation_plots(d, feature[i], band_head, i_el[i], i_wl, ax20[i], ax21[i])
-            ax20[0].legend()
-            ax21[0].legend()
+            splots.elevation_plots(d, feature[i], band_head, i_el[i], i_wl, ax220[i], ax221[i], ax222[i])
+            ax220[0].legend()
+            ax221[0].legend()
+            ax222[0].legend()
 
         if not P.plots or "ratio" in P.plots:
             splots.plot_ratio_elevation(d, band_head['N2p1N01'], i_el[i]["feature"], ax=ax23[i])
