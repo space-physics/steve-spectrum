@@ -45,14 +45,16 @@ def setup_elevation_plots(
     ax20 = fg20.subplots(N, 1, sharex=True)
     ax20[-1].set_xlabel("elevation bin (unitless)")
     ax20[-1].set_ylabel("luminosity (Rayleighs)")
-    fg20.tight_layout()
+    # fg20.tight_layout()
+    fg20.suptitle('No background subtraction')
 
     fg21 = figure(21, figsize=(12, 10))
     fg21.clf()
     ax21 = fg21.subplots(N, 1, sharex=True)
     ax21[-1].set_xlabel("elevation bin (unitless)")
     ax21[-1].set_ylabel("luminosity (Rayleighs)")
-    fg21.tight_layout()
+    # fg21.tight_layout()
+    fg21.suptitle('Equatorward background subtraction')
 
     fg22 = figure(22)
     fg22.clf()
