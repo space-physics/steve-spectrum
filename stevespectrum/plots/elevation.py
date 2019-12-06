@@ -70,7 +70,7 @@ def elevation_plots(
     feature: str,
     head_limits: typing.Sequence[float],
     i_el: typing.Dict[str, int],
-    i_wl: typing.Sequence[float],
+    i_wl: typing.Sequence[str],
     ax20,
     ax21,
 ):
@@ -113,7 +113,7 @@ def plot_speclines_elevation(
     dat: xarray.DataArray,
     head_limits: typing.Sequence[float],
     i_el: int,
-    i_wl: typing.Sequence[float],
+    i_wl: typing.Sequence[str],
     ax,
 ):
     """
@@ -123,7 +123,7 @@ def plot_speclines_elevation(
     dat = dat.loc[keo_el, :]
 
     for i in i_wl:
-        if i == 427.8:
+        if i in ("427.8", "continuum"):
             d = sum_bandhead(dat, head_limits)
         else:
             d = dat.sel(wavelength=i, method="nearest")

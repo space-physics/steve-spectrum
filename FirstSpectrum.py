@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     N = len(i_el)
 
-    i_wl = (427.8, 557.7, 630.0)
+    i_wl = ("427.8", "557.7", "630.0", "continuum")
 
     dat = load_spectrum(P.path)
 
