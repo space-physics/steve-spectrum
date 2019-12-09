@@ -2,10 +2,12 @@ import xarray
 import typing
 from datetime import datetime
 from matplotlib.pyplot import figure
+from matplotlib.colors import LogNorm
 
 from .base import color, sum_bandhead, color_lines
 
 keo_el = slice(70, 125)  # roughly match inset of Figure 1 and 2
+# keo_el = slice(None)
 
 
 def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, int]], ax):
@@ -38,37 +40,33 @@ def plot_keogram(dat: xarray.DataArray, i_el: typing.Sequence[typing.Dict[str, i
 def setup_elevation_plots(
     dat: xarray.DataArray,
     feature: typing.Sequence[str],
-    head_limits: typing.Sequence[float],
+    head_limits: typing.Mapping[str, typing.Sequence[float]],
     N: int,
 ) -> tuple:
-    fg20 = figure(220, figsize=(12, 10))
-    fg20.clf()
-    ax20 = fg20.subplots(N, 1, sharex=True)
+    """ create blank figures """
+
+    fg = figure(figsize=(12, 10))
+    ax20 = fg.subplots(N, 1, sharex=True)
     ax20[-1].set_xlabel("elevation bin (unitless)")
     ax20[-1].set_ylabel("luminosity (Rayleighs)")
-    # fg20.tight_layout()
-    fg20.suptitle("No background subtraction")
+    fg.suptitle("No background subtraction")
 
-    fg21 = figure(221, figsize=(12, 10))
-    fg21.clf()
-    ax21 = fg21.subplots(N, 1, sharex=True)
+    fg = figure(figsize=(12, 10))
+    ax21 = fg.subplots(N, 1, sharex=True)
     ax21[-1].set_xlabel("elevation bin (unitless)")
     ax21[-1].set_ylabel("relative luminosity (Rayleighs)")
-    # fg21.tight_layout()
-    fg21.suptitle("Equatorward background subtraction")
+    fg.suptitle("Equatorward background subtraction")
 
-    fg22 = figure(222, figsize=(12, 10))
-    fg22.clf()
-    ax22 = fg22.subplots(N, 1, sharex=True)
+    fg = figure(figsize=(12, 10))
+    ax22 = fg.subplots(N, 1, sharex=True)
     ax22[-1].set_xlabel("elevation bin (unitless)")
     ax22[-1].set_ylabel("relative luminosity (Rayleighs)")
-    # fg22.tight_layout()
-    fg22.suptitle("Poleward background subtraction")
+    fg.suptitle("Poleward background subtraction")
 
-    fg = figure(22)
-    fg.clf()
-    ax = fg.subplots(N, 1, sharex=True)
-    plot_N21N_elevation(dat, feature, head_limits, ax)
+    for k in head_limits:
+        fg = figure()
+        ax = fg.subplots(N, 1, sharex=True)
+        plot_spectrum_elevation(dat, feature, head_limits[k], ax, k)
 
     return ax20, ax21, ax22
 
@@ -81,7 +79,7 @@ def elevation_plots(
     i_wl: typing.List[str],
     ax20,
     ax21,
-    ax22
+    ax22,
 ):
     # %% raw values
     plot_speclines_elevation(dat, head_limits, i_el["feature"], i_wl, ax=ax20)
@@ -97,8 +95,12 @@ def elevation_plots(
     ax22.set_title(feature + ": " + str(dat.time.values)[:-10])
 
 
-def plot_N21N_elevation(
-    dat: xarray.DataArray, feature: typing.Sequence[str], head_limits: typing.Sequence[float], ax,
+def plot_spectrum_elevation(
+    dat: xarray.DataArray,
+    feature: typing.Sequence[str],
+    head_limits: typing.Sequence[float],
+    ax,
+    k: str,
 ):
     """
     plot luminosity vs. elevation bin
@@ -114,7 +116,9 @@ def plot_N21N_elevation(
     for i, (d, a) in enumerate(zip(dat, ax)):
         d = d[:, j[0]: j[1] + 1]
 
-        d.plot(ax=a)
+        norm = LogNorm() if k == "all" else None
+        LOGMIN = 1.0  # arbitrary
+        d.plot(ax=a, norm=norm, vmin=max(d.min(), LOGMIN))
         a.set_title(feature[i] + ": " + str(d.time.values)[:-10])
 
     ax[1].set_ylabel("elevation bin (unitless)")
@@ -138,9 +142,9 @@ def plot_speclines_elevation(
 
     for i in i_wl:
         if i == "427.8":
-            d = sum_bandhead(dat, head_limits['N2p1N01'])
+            d = sum_bandhead(dat, head_limits["N2p1N01"])
         elif i == "450..530":
-            d = sum_bandhead(dat, head_limits['continuum'])
+            d = sum_bandhead(dat, head_limits["continuum"])
         else:
             d = dat.sel(wavelength=i, method="nearest")
 

@@ -17,7 +17,8 @@ import stevespectrum as splots
 
 band_head = {'N2p1N01': (424.5, 427.9),  # (0, 1)
              'N2p1N0112': (421.6, 428.3),  # (0, 1) and (1, 2)
-             'continuum': (450.0, 530.0)}  # [nm]
+             'continuum': (450.0, 530.0),
+             'all': (380, 800)}  # [nm]
 
 feature = ["picket fence", "STEVE"]
 
@@ -123,7 +124,7 @@ if __name__ == "__main__":
         splots.plot_keogram(dat, i_el, fg.gca())
 
     if not P.plots or "el" in P.plots:
-        ax220, ax221, ax222 = splots.setup_elevation_plots(dat, feature, band_head['N2p1N01'], N)
+        ax220, ax221, ax222 = splots.setup_elevation_plots(dat, feature, band_head, N)
 
     if not P.plots or "ratio" in P.plots:
         fg23 = figure(23)
