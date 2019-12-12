@@ -145,8 +145,9 @@ def plot_speclines_elevation(
             d = sum_bandhead(dat, head_limits["N2p1N01"])
         elif i == "450..530":
             d = sum_bandhead(dat, head_limits["continuum"]) / 5
-            ax.annotate('x5', (dat.elevation[0], d.values[0]),
+            ax.annotate('÷ 5', (dat.elevation[0], d.values[0]),
                         xytext=(dat.elevation[0]-1, d.values[0]+40),
+                        fontsize='large',
                         arrowprops={'arrowstyle': '-|>'})
         else:
             d = dat.sel(wavelength=i, method="nearest")
